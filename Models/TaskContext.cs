@@ -37,10 +37,10 @@ public sealed record TaskContext(
         sb.AppendLine(string.IsNullOrWhiteSpace(Description) ? "_Sem descrição._" : Description.Trim());
         sb.AppendLine();
 
-        sb.AppendLine($"## Comentários ({Comments.Count})");
+        sb.AppendLine($"## Comentários de usuários ({Comments.Count})");
         if (Comments.Count == 0)
         {
-            sb.AppendLine("_Nenhum comentário._");
+            sb.AppendLine("_Nenhum comentário de usuário (comentários automáticos do Runrun.it foram ignorados)._");
         }
         else
         {

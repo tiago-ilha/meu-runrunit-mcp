@@ -77,6 +77,10 @@ public sealed class RunrunItClient(HttpClient httpClient, IOptions<RunrunItOptio
         foreach (var element in elements)
         {
             var commentElement = element.TryGetProperty("comment", out var wrapped) ? wrapped : element;
+
+            if (!CommentFilter.IsUserComment(commentElement))
+                continue;
+
             var id = GetInt(commentElement, "id") ?? 0;
             var text = TextHelper.StripHtml(GetString(commentElement, "text") ?? GetString(commentElement, "body"));
             if (string.IsNullOrWhiteSpace(text))
