@@ -33,5 +33,7 @@ Write-Host @"
 }
 "@
 Write-Host ""
+Write-Host "Runtime: net8.0 com roll-forward Major (roda em maquinas com .NET 8, 9 ou 10 instalado)."
+Write-Host ""
 Write-Host "Credenciais Runrun.it: configure com dotnet user-secrets na pasta do repo de desenvolvimento,"
 Write-Host "ou use env no mcp.json (veja README)."

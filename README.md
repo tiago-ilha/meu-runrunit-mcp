@@ -44,7 +44,7 @@ O parâmetro **`projectRoot`** é o caminho absoluto da **raiz do repositório a
 
 ## Pré-requisitos
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) (ou compatível com `net10.0` do projeto)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download) ou superior (o app targeta `net8.0` com roll-forward para runtimes 9/10)
 - [Cursor](https://cursor.com/) com MCP habilitado
 - Conta Runrun.it com **App-Key** e **User-Token** (Configurações → Integrações → API)
 - O **outro projeto** clonado/local no disco, com caminho que você conhece (ex.: `C:\dev\cliente\portal-web`)
@@ -110,17 +110,26 @@ Substitua `SEU_USUARIO` pelo seu usuário Windows. Exemplo completo com credenci
 
 ### Passo 3 — Credenciais Runrun.it
 
-**Opção A — User Secrets (recomendado se você mantém o repo de desenvolvimento)**
+**Opção A — Script interativo (recomendado)**
 
-Configure uma vez no clone do MCP (o `UserSecretsId` é o mesmo após o publish):
+Na pasta do repositório, execute **uma vez**:
 
-```bash
+```powershell
 cd C:\dev\projetos\trabalho\meu-runrunit-mcp
-dotnet user-secrets set "RunrunIt:AppKey" "SUA_APP_KEY"
-dotnet user-secrets set "RunrunIt:UserToken" "SEU_USER_TOKEN"
+.\scripts\configure.ps1
 ```
 
-**Opção B — Variáveis no `mcp.json` (funciona sem abrir o repo)**
+Ou dê duplo clique em `configure.cmd`. O script pergunta App-Key e User-Token e grava nos User Secrets (sem expor no `mcp.json`).
+
+Setup completo (credenciais + publish):
+
+```powershell
+.\scripts\setup.ps1
+```
+
+> **Obs.:** Esses comandos manuais já estão encapsulados em um dos arquivos de PowerShell (`configure.ps1`). Prefira executar o script ao invés de rodar os comandos individualmente.
+
+**Opção C — Variáveis no `mcp.json` (funciona sem abrir o repo)**
 
 ```json
 "env": {
@@ -170,11 +179,9 @@ C:\dev\projetos\trabalho\meu-runrunit-mcp
 
 No terminal, na pasta do MCP:
 
-```bash
+```powershell
 cd C:\dev\projetos\trabalho\meu-runrunit-mcp
-
-dotnet user-secrets set "RunrunIt:AppKey" "SUA_APP_KEY"
-dotnet user-secrets set "RunrunIt:UserToken" "SEU_USER_TOKEN"
+.\scripts\configure.ps1
 ```
 
 ### 3. Registre o MCP no Cursor (modo desenvolvimento)
@@ -401,15 +408,26 @@ No `mcp.json`, se preferir não usar User Secrets:
 
 | Problema | Causa provável | O que fazer |
 |----------|----------------|-------------|
-| `Credenciais Runrun.it ausentes` | App-Key / User-Token não configurados | `dotnet user-secrets set` ou `env` no `mcp.json` |
+| `Credenciais Runrun.it ausentes` | App-Key / User-Token não configurados | `.\scripts\configure.ps1` ou `env` no `mcp.json` |
 | `Informe projectRoot...` | Caminho não passado e config vazia | Informe `projectRoot` absoluto no prompt |
 | `ProjectRoot não encontrado` | Caminho errado ou pasta não existe | Confira o disco; use `validate_project_root` |
 | `não parece um repositório de código` | Pasta vazia ou só documentação | Aponte para a raiz da solution/app |
 | Nenhum arquivo na busca | Termos da tarefa muito genéricos | Use `extraQuery` com nomes de tela, controller, módulo |
 | Tools não aparecem no Cursor | MCP não carregou | Verifique `mcp.json`, `dotnet build`, reinicie o Cursor |
-| Erro ao compilar o MCP | SDK incompatível | Instale .NET 10 SDK |
+| Erro ao compilar o MCP | SDK incompatível | Instale .NET 8 SDK ou superior |
+| Erro ao iniciar o MCP publicado | Runtime ausente | Instale [.NET 8 Runtime](https://dotnet.microsoft.com/download) (8, 9 ou 10 com roll-forward) |
 
 ---
+
+## Compatibilidade .NET
+
+O projeto compila para **`net8.0`** com **`RollForward: Major`** no `.csproj`. Isso significa:
+
+- **Build:** .NET 8 SDK ou superior.
+- **Execução (publish global):** qualquer máquina com **.NET 8, 9 ou 10** runtime instalado.
+- Não é necessário ter exatamente a mesma versão do SDK usada no desenvolvimento.
+
+Após alterar a versão do framework, rode `.\scripts\publish-global.ps1` de novo e reinicie o Cursor.
 
 ## Build e desenvolvimento
 
