@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "meu-runrunit": {
+      "command": "dotnet",
+      "args": [
+        "exec",
+        "C:\\Users\\SEU_USUARIO\\AppData\\Local\\MeuRunrunItMCP\\MeuRunrunItMCP.dll"
+      ],
+      "env": {
+        "RunrunIt__AppKey": "cole-sua-app-key-aqui",
+        "RunrunIt__UserToken": "cole-seu-user-token-aqui"
+      }
+    }
+  }
+}
