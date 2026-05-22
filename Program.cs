@@ -21,6 +21,9 @@ internal static class Program
             .Configure<RunrunItOptions>(builder.Configuration.GetSection(RunrunItOptions.SectionName))
             .Configure<CodeAnalysisOptions>(builder.Configuration.GetSection(CodeAnalysisOptions.SectionName));
 
+        // Default host logging on Windows includes EventLog, which fails when published
+        // or run with roll-forward on a newer runtime (missing System.Diagnostics.EventLog).
+        builder.Logging.ClearProviders();
         builder.Logging.AddConsole(consoleLogOptions =>
         {
             consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;

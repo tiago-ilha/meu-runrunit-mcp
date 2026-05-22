@@ -17,7 +17,7 @@ if (-not $SkipPublish) {
     Write-Host ""
     $publish = Read-Host "Publicar para uso global no Cursor agora? [S/n]"
     if ($publish -notmatch '^[nN]') {
-        & (Join-Path $ScriptsDir "publish-global.ps1")
+        & (Join-Path $ScriptsDir "publish-global.ps1") -SkipSecretsCheck
     }
 }
 

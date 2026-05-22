@@ -18,7 +18,8 @@ Este repositório é só o **servidor MCP**. O código que você analisa fica em
 8. [Exemplos de prompts no Cursor](#exemplos-de-prompts-no-cursor)
 9. [Configuração opcional](#configuração-opcional)
 10. [Solução de problemas](#solução-de-problemas)
-11. [Build e desenvolvimento](#build-e-desenvolvimento)
+11. [Versionamento e releases](#versionamento-e-releases)
+12. [Build e desenvolvimento](#build-e-desenvolvimento)
 
 ---
 
@@ -73,6 +74,18 @@ cd C:\dev\projetos\trabalho\meu-runrunit-mcp
 .\scripts\publish-global.ps1
 ```
 
+O script **verifica os User Secrets antes de publicar**:
+
+| Situação | O que o script faz |
+|----------|-------------------|
+| Sem App-Key / User-Token | Pede para preencher |
+| Já configurado | Pergunta: manter secrets **[S]** ou informar novas **[N]** |
+
+As credenciais ficam em `%APPDATA%\Microsoft\UserSecrets\` — **não** na pasta da DLL. Republicar **não exige** digitar de novo, a menos que você escolha **[N]**.
+
+Pular a verificação: `.\scripts\publish-global.ps1 -SkipSecretsCheck`  
+Forçar novas credenciais: `.\scripts\publish-global.ps1 -ForceNewSecrets`
+
 Isso gera os binários em:
 
 ```text
@@ -108,28 +121,23 @@ Edite `%USERPROFILE%\.cursor\mcp.json`:
 
 Substitua `SEU_USUARIO` pelo seu usuário Windows. Exemplo completo com credenciais em variáveis de ambiente: [`docs/mcp.global.example.json`](docs/mcp.global.example.json).
 
-### Passo 3 — Credenciais Runrun.it
+### Passo 3 — Credenciais Runrun.it (se ainda não configurou no publish)
 
-**Opção A — Script interativo (recomendado)**
-
-Na pasta do repositório, execute **uma vez**:
+**Opção A — Só credenciais (sem publish)**
 
 ```powershell
-cd C:\dev\projetos\trabalho\meu-runrunit-mcp
 .\scripts\configure.ps1
 ```
 
-Ou dê duplo clique em `configure.cmd`. O script pergunta App-Key e User-Token e grava nos User Secrets (sem expor no `mcp.json`).
+Mesma lógica do `publish-global`: detecta secrets existentes e pergunta manter ou criar novas.
 
-Setup completo (credenciais + publish):
+**Opção B — Setup completo (credenciais + publish)**
 
 ```powershell
 .\scripts\setup.ps1
 ```
 
-> **Obs.:** Esses comandos manuais já estão encapsulados em um dos arquivos de PowerShell (`configure.ps1`). Prefira executar o script ao invés de rodar os comandos individualmente.
-
-**Opção C — Variáveis no `mcp.json` (funciona sem abrir o repo)**
+**Opção C — Variáveis no `mcp.json` (funciona sem User Secrets)**
 
 ```json
 "env": {
@@ -150,6 +158,8 @@ Setup completo (credenciais + publish):
 cd C:\dev\projetos\trabalho\meu-runrunit-mcp
 .\scripts\publish-global.ps1
 ```
+
+Na republicação, pressione **S** para manter as credenciais já salvas (padrão).
 
 Reinicie o Cursor (ou desligue/ligue o servidor MCP nas configurações).
 
@@ -428,6 +438,64 @@ O projeto compila para **`net8.0`** com **`RollForward: Major`** no `.csproj`. I
 - Não é necessário ter exatamente a mesma versão do SDK usada no desenvolvimento.
 
 Após alterar a versão do framework, rode `.\scripts\publish-global.ps1` de novo e reinicie o Cursor.
+
+## Versionamento e releases
+
+Este repositório usa **Conventional Commits**, **Semantic Versioning** e **Semantic Release** (via Node.js apenas para tooling de git/release — o app continua em .NET).
+
+### Pré-requisito
+
+- [Node.js](https://nodejs.org/) 20+ (para Commitizen, Commitlint e Husky localmente)
+
+Na primeira vez, na pasta do repositório:
+
+```powershell
+npm install
+```
+
+O script `prepare` configura o **Husky** e valida mensagens de commit no hook `commit-msg`.
+
+### Commits no dia a dia
+
+| Ferramenta | Uso |
+|------------|-----|
+| **Commitizen** | `npm run commit` — assistente interativo (`feat`, `fix`, `chore`, etc.) |
+| **Commitlint** | Valida automaticamente no `git commit` (hook Husky) |
+| **Conventional Commits** | Formato: `tipo(escopo opcional): descrição` |
+
+Exemplos válidos:
+
+```text
+feat: adicionar busca por tag na API Runrun.it
+fix(tools): corrigir projectRoot com barras invertidas
+chore: atualizar dependências MCP
+```
+
+Commits que **não** seguem o padrão são rejeitados localmente antes de subir.
+
+### Releases automáticas (Semantic Release)
+
+Ao fazer **push na branch `main`**, o workflow [`.github/workflows/release.yml`](.github/workflows/release.yml):
+
+1. Analisa commits desde a última tag (`feat` → minor, `fix` → patch, `BREAKING CHANGE` → major).
+2. Gera/atualiza **`CHANGELOG.md`** (Conventional Changelog).
+3. Atualiza `<Version>` em `MeuRunrunItMCP.csproj` e `package.json`.
+4. Cria **tag Git** e **GitHub Release** com notas.
+
+O commit de release usa `[skip ci]` para não disparar outro release em loop.
+
+**Importante:** commits antigos fora do padrão convencional não entram no cálculo da próxima versão. A partir da adoção deste fluxo, use sempre `npm run commit` ou mensagens no formato conventional.
+
+### Referência rápida de tipos
+
+| Tipo | Versão (SemVer) | Exemplo |
+|------|-----------------|---------|
+| `feat` | minor | nova tool MCP |
+| `fix` | patch | correção de bug |
+| `perf` | patch | melhoria de performance |
+| `BREAKING CHANGE` no corpo ou `!` após tipo | major | remoção de parâmetro |
+
+Documentação: [Conventional Commits](https://www.conventionalcommits.org/), [Semantic Versioning](https://semver.org/).
 
 ## Build e desenvolvimento
 
