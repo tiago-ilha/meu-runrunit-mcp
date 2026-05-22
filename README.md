@@ -512,7 +512,8 @@ dotnet run --project MeuRunrunItMCP.csproj
 
 ## API Runrun.it
 
-- `GET /tasks/{id}` — detalhe da tarefa (inclui `description` quando disponível)
+- `GET /tasks/{id}` — detalhe da tarefa (título, projeto, quadro, etc.)
+- `GET /descriptions?subject_type=Task&subject_id={id}` — corpo da descrição (HTML)
 - `GET /tasks/{id}/comments` — comentários da tarefa (apenas de **usuários**; automáticos do Runrun.it são filtrados)
 
 Documentação oficial: https://runrun.it/api/documentation

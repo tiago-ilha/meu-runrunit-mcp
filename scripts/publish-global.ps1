@@ -16,13 +16,79 @@ if (-not $SkipSecretsCheck) {
     Ensure-RunrunItSecrets -ProjectFile $ProjectFile -SkipProjectRoot:$SkipProjectRoot -ForceNew:$ForceNewSecrets
 }
 
+function Stop-MeuRunrunItMcpProcesses {
+    $stopped = 0
+
+    Get-Process -Name "MeuRunrunItMCP" -ErrorAction SilentlyContinue | ForEach-Object {
+        Write-Host "Encerrando MeuRunrunItMCP (PID $($_.Id))..." -ForegroundColor DarkYellow
+        Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+        $stopped++
+    }
+
+    Get-CimInstance Win32_Process -Filter "Name = 'dotnet.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -and $_.CommandLine -like '*MeuRunrunItMCP*' } |
+        ForEach-Object {
+            Write-Host "Encerrando dotnet do MCP (PID $($_.ProcessId))..." -ForegroundColor DarkYellow
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+            $stopped++
+        }
+
+    if ($stopped -gt 0) {
+        Start-Sleep -Milliseconds 800
+    }
+}
+
+function Clear-PublishOutputDirectory {
+    param(
+        [string]$Path,
+        [int]$MaxAttempts = 4
+    )
+
+    if (-not (Test-Path $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+        return
+    }
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            Get-ChildItem -Path $Path -Force -ErrorAction Stop |
+                Remove-Item -Recurse -Force -ErrorAction Stop
+            return
+        }
+        catch {
+            if ($attempt -eq 1) {
+                Stop-MeuRunrunItMcpProcesses
+            }
+            elseif ($attempt -eq $MaxAttempts) {
+                throw @"
+Nao foi possivel limpar $Path (arquivo em uso).
+Desligue o servidor MCP no Cursor (Settings > MCP) e execute o script novamente.
+"@
+            }
+            Start-Sleep -Seconds 1
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "Publicando MeuRunrunItMCP em Release..." -ForegroundColor Cyan
-if (Test-Path $OutputPath) {
-    Write-Host "Limpando pasta de publicacao (evita DLLs antigas de publish anterior)..." -ForegroundColor DarkGray
-    Remove-Item (Join-Path $OutputPath "*") -Recurse -Force
+
+$stagingPath = Join-Path $env:TEMP "MeuRunrunItMCP-publish-$([Guid]::NewGuid().ToString('N'))"
+try {
+    dotnet publish $ProjectFile -c Release -o $stagingPath
+
+    Stop-MeuRunrunItMcpProcesses
+    Clear-PublishOutputDirectory -Path $OutputPath
+
+    Write-Host "Copiando binarios para pasta global..." -ForegroundColor DarkGray
+    New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+    Copy-Item -Path (Join-Path $stagingPath '*') -Destination $OutputPath -Recurse -Force
 }
-dotnet publish $ProjectFile -c Release -o $OutputPath
+finally {
+    if (Test-Path $stagingPath) {
+        Remove-Item $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 
 $dll = Join-Path $OutputPath "MeuRunrunItMCP.dll"
 if (-not (Test-Path $dll)) {

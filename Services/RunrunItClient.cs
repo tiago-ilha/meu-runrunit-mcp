@@ -23,24 +23,126 @@ public sealed class RunrunItClient(HttpClient httpClient, IOptions<RunrunItOptio
         var taskRoot = UnwrapRoot(taskDoc.RootElement);
 
         var title = GetString(taskRoot, "title") ?? $"Tarefa {taskId}";
-        var description = GetString(taskRoot, "description");
+        var descriptionRaw = await GetTaskDescriptionAsync(config, taskId, taskRoot, cancellationToken);
         var projectName = GetString(taskRoot, "project_name");
         var boardName = GetString(taskRoot, "board_name");
         var url = GetString(taskRoot, "url");
 
         var comments = await GetCommentsAsync(config, taskId, cancellationToken);
-        var combined = TextHelper.BuildCombinedSearchText(title, description, comments);
+        var combined = TextHelper.BuildCombinedSearchText(title, descriptionRaw, comments);
 
         return new TaskContext(
             taskId,
             title,
-            string.IsNullOrWhiteSpace(description) ? null : TextHelper.StripHtml(description),
+            string.IsNullOrWhiteSpace(descriptionRaw) ? null : TextHelper.StripHtml(descriptionRaw),
             projectName,
             boardName,
             url,
             comments,
             combined);
     }
+
+    private async Task<string?> GetTaskDescriptionAsync(
+        RunrunItOptions config,
+        int taskId,
+        JsonElement taskRoot,
+        CancellationToken cancellationToken)
+    {
+        var fromDescriptionsEndpoint = await GetDescriptionFromDescriptionsApiAsync(config, taskId, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(fromDescriptionsEndpoint))
+            return fromDescriptionsEndpoint;
+
+        return ExtractDescriptionFromElement(taskRoot);
+    }
+
+    private async Task<string?> GetDescriptionFromDescriptionsApiAsync(
+        RunrunItOptions config,
+        int taskId,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateRequest(
+            HttpMethod.Get,
+            config,
+            "descriptions",
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["subject_type"] = "Task",
+                ["subject_id"] = taskId.ToString()
+            });
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        return ParseDescriptionPayload(doc.RootElement);
+    }
+
+    private static string? ParseDescriptionPayload(JsonElement root)
+    {
+        if (root.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in root.EnumerateArray())
+            {
+                var text = ExtractDescriptionFromElement(item);
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+            }
+
+            return null;
+        }
+
+        if (root.ValueKind != JsonValueKind.Object)
+            return null;
+
+        if (root.TryGetProperty("description", out var descriptionNode))
+        {
+            var direct = ExtractDescriptionFromProperty(descriptionNode);
+            if (!string.IsNullOrWhiteSpace(direct))
+                return direct;
+        }
+
+        if (root.TryGetProperty("data", out var data))
+            return ParseDescriptionPayload(data);
+
+        if (root.TryGetProperty("descriptions", out var descriptions))
+            return ParseDescriptionPayload(descriptions);
+
+        return ExtractDescriptionFromElement(root);
+    }
+
+    private static string? ExtractDescriptionFromElement(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+            return null;
+
+        if (element.TryGetProperty("description", out var descriptionNode))
+        {
+            var nested = ExtractDescriptionFromProperty(descriptionNode);
+            if (!string.IsNullOrWhiteSpace(nested))
+                return nested;
+        }
+
+        return GetString(element, "body")
+            ?? GetString(element, "html")
+            ?? GetString(element, "text");
+    }
+
+    private static string? ExtractDescriptionFromProperty(JsonElement value) =>
+        value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Object => GetString(value, "description")
+                ?? GetString(value, "body")
+                ?? GetString(value, "html")
+                ?? GetString(value, "text"),
+            _ => null
+        };
 
     private async Task<IReadOnlyList<CommentSnippet>> GetCommentsAsync(
         RunrunItOptions config,
@@ -112,10 +214,25 @@ public sealed class RunrunItClient(HttpClient httpClient, IOptions<RunrunItOptio
             ?? "Desconhecido";
     }
 
-    private static HttpRequestMessage CreateRequest(HttpMethod method, RunrunItOptions config, string relativePath)
+    private static HttpRequestMessage CreateRequest(
+        HttpMethod method,
+        RunrunItOptions config,
+        string relativePath,
+        IReadOnlyDictionary<string, string>? query = null)
     {
         var baseUrl = config.BaseUrl.TrimEnd('/');
-        var request = new HttpRequestMessage(method, $"{baseUrl}/{relativePath}");
+        var url = $"{baseUrl}/{relativePath}";
+
+        if (query is { Count: > 0 })
+        {
+            var queryString = string.Join(
+                "&",
+                query.Select(pair =>
+                    $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"));
+            url = $"{url}?{queryString}";
+        }
+
+        var request = new HttpRequestMessage(method, url);
         request.Headers.Add("App-Key", config.AppKey);
         request.Headers.Add("User-Token", config.UserToken);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
