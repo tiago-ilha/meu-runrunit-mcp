@@ -24,10 +24,7 @@ internal static class Program
         // Default host logging on Windows includes EventLog, which fails when published
         // or run with roll-forward on a newer runtime (missing System.Diagnostics.EventLog).
         builder.Logging.ClearProviders();
-        builder.Logging.AddConsole(consoleLogOptions =>
-        {
-            consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
-        });
+        builder.Logging.AddConsole(consoleLogOptions => consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace);
 
         builder.Services.AddHttpClient<IRunrunItClient, RunrunItClient>();
         builder.Services.AddSingleton<ICodeIndexService, CodeIndexService>();
