@@ -1,3 +1,4 @@
+using MeuRunrunItMCP.Abstractions;
 using MeuRunrunItMCP.Models;
 
 namespace MeuRunrunItMCP.Services;

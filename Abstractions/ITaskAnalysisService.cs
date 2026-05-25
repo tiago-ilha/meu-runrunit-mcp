@@ -1,6 +1,6 @@
 using MeuRunrunItMCP.Models;
 
-namespace MeuRunrunItMCP.Services;
+namespace MeuRunrunItMCP.Abstractions;
 
 public interface ITaskAnalysisService
 {

@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using MeuRunrunItMCP.Services;
+using MeuRunrunItMCP.Abstractions;
 using ModelContextProtocol.Server;
 
 namespace MeuRunrunItMCP.Tools;
