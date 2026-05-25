@@ -5,6 +5,17 @@ on:
     branches:
       - main
 
+# Esta seção define as permissões concedidas ao workflow durante sua execução.
+# Aqui, o workflow tem permissão para:
+# - contents: write         # permite escrever/alterar arquivos no repositório (ex: atualização de CHANGELOG.md, commit de versionamento automático)
+# - issues: write           # permite criar ou atualizar issues (ex: geração automática de relatórios ou feedback)
+# - pull-requests: write    # permite criar ou atualizar pull requests (ex: automações para abertura de PRs por bots)
+
+# Cenários comuns de escrita de conteúdo no repositório:
+# - Quando ferramentas como o semantic-release fazem commits automáticos para atualizar arquivos versionados (por exemplo, CHANGELOG.md ou arquivos de configuração).
+# - Quando há automações que precisam abrir, atualizar ou fechar Pull Requests ou Issues automaticamente.
+#
+# Melhor prática: limitar as permissões a apenas o necessário para cada workflow, reduzindo riscos de segurança. Se o workflow só atualiza arquivos versionados automaticamente (como nesta pipeline de release), normalmente apenas 'contents: write' é suficiente. Permissões para issues e pull-requests só devem ser concedidas se forem realmente utilizadas no pipeline.
 permissions:
   contents: write
   issues: write
@@ -25,7 +36,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
