@@ -49,31 +49,23 @@ public sealed class RunrunItClient(HttpClient httpClient, IOptions<RunrunItOptio
         JsonElement taskRoot,
         CancellationToken cancellationToken)
     {
-        var fromDescriptionsEndpoint = await GetDescriptionFromDescriptionsApiAsync(config, taskId, cancellationToken);
-        if (!string.IsNullOrWhiteSpace(fromDescriptionsEndpoint))
-            return fromDescriptionsEndpoint;
+        var fromTaskDescriptionEndpoint = await GetDescriptionFromTaskDescriptionApiAsync(config, taskId, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(fromTaskDescriptionEndpoint))
+            return fromTaskDescriptionEndpoint;
 
         return ExtractDescriptionFromElement(taskRoot);
     }
 
-    private async Task<string?> GetDescriptionFromDescriptionsApiAsync(
+    private async Task<string?> GetDescriptionFromTaskDescriptionApiAsync(
         RunrunItOptions config,
         int taskId,
         CancellationToken cancellationToken)
     {
-        using var request = CreateRequest(
-            HttpMethod.Get,
-            config,
-            "descriptions",
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["subject_type"] = "Task",
-                ["subject_id"] = taskId.ToString()
-            });
+        using var request = CreateRequest(HttpMethod.Get, config, $"tasks/{taskId}/description");
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
 
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        if (response.StatusCode is System.Net.HttpStatusCode.BadRequest or System.Net.HttpStatusCode.NotFound)
             return null;
 
         await EnsureSuccessAsync(response, cancellationToken);
